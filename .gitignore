@@ -1,0 +1,60 @@
+# Environment variables & API credentials
+.env
+.env.local
+.env.*.local
+
+# Python Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# User Documents & Generated Wiki Content
+sources/*
+!sources/.gitkeep
+
+wiki/*
+!wiki/.gitkeep
+
+# Temporary Scratch Scripts
+scratch/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# OS junk files
+.DS_Store
+Thumbs.db
+
+# Temporary logs & test artifacts
+*.log
+tmp/
