@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="top-bar">
+  <h2>💬 Interrogation du LLM Wiki (Page Principale)</h2>
+  <div class="top-bar-actions">
+    <a href="/upload" class="btn btn-secondary btn-sm">➕ Ajouter une source</a>
+  </div>
+</div>
+
+<div class="chat-page">
+  <div class="chat-messages" id="chat-messages">
+    <!-- Welcome message -->
+    <div class="chat-bubble assistant">
+      <div class="avatar assistant">LLM</div>
+      <div class="bubble-content">
+        <h3 style="margin-bottom: 8px; color: #ffffff;">Bienvenue dans votre LLM Wiki !</h3>
+        <p>Posez-moi n'importe quelle question sur vos connaissances accumulées. Je vais rechercher les fiches du wiki, synthétiser une réponse précise en français et citer les fiches associées.</p>
+        <p style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);">
+          <em>💡 Astuce : Vous pouvez enregistrer les réponses synthétisées directement sous forme de nouvelles fiches permanentes dans le wiki.</em>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Input Bar -->
+  <div class="chat-input-wrapper">
+    <div class="chat-input-box">
+      <textarea id="chat-input" placeholder="Posez une question à votre LLM Wiki... (ex: Quels sont les concepts clés ?)" rows="1"></textarea>
+      <button class="chat-send-btn" onclick="submitQuery()" title="Envoyer la requête">➔</button>
+    </div>
+  </div>
+</div>
+{% endblock %}

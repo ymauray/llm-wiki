@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="top-bar">
+  <h2>📥 Téléversement & Ingestion de Documents</h2>
+  <div class="top-bar-actions">
+    <button id="btn-ingest" onclick="triggerIngestion()" class="btn btn-primary">
+      🚀 Démarrer l'ingestion incrémentale
+    </button>
+  </div>
+</div>
+
+<div style="padding: 32px; overflow-y: auto; flex: 1;">
+  <div style="max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
+
+    <!-- Dropzone Card -->
+    <div class="glass-card">
+      <h3 style="margin-bottom: 8px; color: white;">1. Téléverser des documents sources</h3>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+        Les fichiers seront enregistrés dans le répertoire immuable <code>/sources</code>. Formats supportés : <strong>PDF, Word (.docx), TXT, Markdown (.md), JSON, CSV</strong>.
+      </p>
+
+      <div class="upload-dropzone" id="dropzone">
+        <div class="icon">📄</div>
+        <h4 style="color: white; margin-bottom: 6px;">Glissez-déposez vos fichiers ici</h4>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">ou cliquez pour parcourir votre ordinateur</p>
+        <input type="file" id="file-input" multiple style="display: none;" accept=".txt,.md,.docx,.pdf,.json,.csv,.html">
+      </div>
+
+      <div id="upload-status" style="margin-top: 16px;"></div>
+    </div>
+
+    <!-- Ingestion Execution Card -->
+    <div class="glass-card">
+      <h3 style="margin-bottom: 8px; color: white;">2. Lancer la synthèse incrémentale du Wiki</h3>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+        Le LLM analysera les nouveaux fichiers dans <code>/sources</code>, rédigera les fiches de résumé, créera/mettra à jour les fiches de concepts et d'entités, et reconstruira l'index.
+      </p>
+      
+      <div id="ingestion-result" style="margin-top: 12px; font-size: 0.95rem;"></div>
+    </div>
+
+    <!-- Existing Sources List Card -->
+    <div class="glass-card">
+      <h3 style="margin-bottom: 12px; color: white;">📂 Documents actuels dans <code>/sources</code></h3>
+      <ul id="sources-list" style="list-style: none;">
+        {% if sources %}
+          {% for source in sources %}
+            <li style="padding: 8px 0; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+              <span>📄 {{ source }}</span>
+              <span style="font-size: 0.75rem; color: var(--secondary); background: rgba(6,182,212,0.1); padding: 2px 8px; border-radius: 4px;">Source Immuable</span>
+            </li>
+          {% endfor %}
+        {% else %}
+          <li style="color: var(--text-subtle);">Aucun document dans /sources pour le moment.</li>
+        {% endif %}
+      </ul>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

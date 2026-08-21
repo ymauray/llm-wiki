@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Wiki - Studio de Connaissance Persistante</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-icon">🧠</div>
+        <div>
+          <h1>LLM Wiki</h1>
+          <span>Knowledge Maintainer</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <a href="/" class="nav-item {% if active_page == 'chat' %}active{% endif %}">
+          <span class="icon">💬</span>
+          <span>Interroger le Wiki</span>
+        </a>
+        <a href="/upload" class="nav-item {% if active_page == 'upload' %}active{% endif %}">
+          <span class="icon">📥</span>
+          <span>Téléverser Sources</span>
+        </a>
+        <a href="/admin" class="nav-item {% if active_page == 'admin' %}active{% endif %}">
+          <span class="icon">⚙️</span>
+          <span>Administration & Logs</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          <span>Modèle LiteLLM: "llm"</span>
+        </div>
+        <div>Statut: Actif & Incrémental</div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <!-- Wiki Page Detail Modal -->
+  <div id="wiki-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(10px); z-index: 1000; justify-content: center; align-items: center; padding: 24px;">
+    <div class="glass-card" style="width: 100%; max-width: 800px; max-height: 85vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border: 1px solid var(--border-glow);">
+      <div style="padding: 16px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.8);">
+        <h3 id="modal-title" style="font-size: 1.1rem; color: #ffffff;">Titre de la page</h3>
+        <button onclick="closeWikiModal()" class="btn btn-secondary btn-sm" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">✕</button>
+      </div>
+      <div id="modal-body" class="markdown-preview" style="padding: 24px; overflow-y: auto; flex: 1; background: var(--bg-dark);">
+        Chargement...
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
