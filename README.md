@@ -29,10 +29,21 @@ llm-wiki/
 ├── wiki_manager.py       # Logique métier (Ingestion, Index, Log, Query, Lint, Statuts)
 ├── cli.py                # Interface en ligne de commande et menu interactif
 ├── app.py                # Point d'entrée principal de l'application
+├── web_app.py            # Serveur Web Flask et API REST
+├── requirements.txt      # Liste des dépendances Python requises
 ├── .env.example          # Exemple de fichier de variables d'environnement
 ├── README.md             # Documentation et instructions d'exécution
-├── sources/              # Dossier où déposer vos documents bruts (.txt, .md, etc.)
-└── wiki/                 # Dossier généré contenant les pages du Wiki, index.md et log.md
+├── AGENTS.md             # Document de transmission et contexte pour agents IA
+├── static/               # Assets Web (CSS Glassmorphism, JavaScript)
+├── templates/            # Gabarits HTML (Chat UI, Upload, Admin)
+├── sources/              # Dossier où déposer vos documents bruts (.txt, .md, .docx, .pdf, etc.)
+└── wiki/                 # Dossier structuré du Wiki persistant
+    ├── entities/         # Fiches d'entités (Entite_*.md)
+    ├── concepts/         # Fiches de concepts (Concept_*.md)
+    ├── sources/          # Fiches de résumés de sources (Source_*.md)
+    ├── syntheses/        # Fiches de synthèses thématiques (Synthesis_*.md)
+    ├── index.md          # Catalogue général du wiki
+    └── log.md            # Journal chronologique des opérations
 ```
 
 ---

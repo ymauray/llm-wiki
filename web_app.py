@@ -181,6 +181,19 @@ def api_wiki_page_detail(filename):
     page_path = WIKI_DIR / filename
     if page_path.exists() and page_path.is_file():
         return jsonify({"filename": filename, "content": page_path.read_text(encoding="utf-8")})
+    
+    from wiki_manager import get_target_wiki_path
+    target = get_target_wiki_path(filename)
+    if target.exists() and target.is_file():
+        rel = target.relative_to(WIKI_DIR).as_posix()
+        return jsonify({"filename": rel, "content": target.read_text(encoding="utf-8")})
+
+    base = Path(filename).name
+    for p in WIKI_DIR.rglob(base):
+        if p.is_file():
+            rel = p.relative_to(WIKI_DIR).as_posix()
+            return jsonify({"filename": rel, "content": p.read_text(encoding="utf-8")})
+
     return jsonify({"error": "Page non trouvée."}), 404
 
 

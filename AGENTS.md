@@ -50,7 +50,14 @@ C:\Users\MaurayY\perso\llm-wiki\
 │   ├── upload.html       # Document Upload & Ingestion page
 │   └── admin.html        # Admin Dashboard (Stats, Logs, Explorer, Lint, Reset)
 ├── sources/              # Input directory for raw source files (.pdf, .docx, .txt, .md, etc.)
-└── wiki/                 # Generated persistent markdown pages + index.md + log.md + .processed_sources.json
+└── wiki/                 # Generated persistent markdown pages + index.md + log.md
+    ├── entities/         # Entity markdown pages (Entite_*.md)
+    ├── concepts/         # Concept markdown pages (Concept_*.md)
+    ├── sources/          # Source summary markdown pages (Source_*.md)
+    ├── syntheses/        # Compounded synthesis markdown pages (Synthesis_*.md)
+    ├── index.md          # Auto-maintained catalog by category
+    ├── log.md            # Append-only chronological activity log
+    └── .processed_sources.json
 ```
 
 ---
