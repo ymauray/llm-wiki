@@ -29,15 +29,24 @@ WIKI_LANGUAGE = os.getenv("WIKI_LANGUAGE", "fr")
 BASE_DIR = Path(__file__).parent.resolve()
 SOURCES_DIR = BASE_DIR / "sources"
 WIKI_DIR = BASE_DIR / "wiki"
+WIKI_ENTITIES_DIR = WIKI_DIR / "entities"
+WIKI_CONCEPTS_DIR = WIKI_DIR / "concepts"
+WIKI_SOURCES_DIR = WIKI_DIR / "sources"
+WIKI_SYNTHESES_DIR = WIKI_DIR / "syntheses"
+
 INDEX_FILE = WIKI_DIR / "index.md"
 LOG_FILE = WIKI_DIR / "log.md"
 MANIFEST_FILE = WIKI_DIR / ".processed_sources.json"
 
 
 def init_environment() -> None:
-    """Ensure required directories (/sources, /wiki) and initial files exist."""
+    """Ensure required directories (/sources, /wiki and subfolders) and initial files exist."""
     SOURCES_DIR.mkdir(parents=True, exist_ok=True)
     WIKI_DIR.mkdir(parents=True, exist_ok=True)
+    WIKI_ENTITIES_DIR.mkdir(parents=True, exist_ok=True)
+    WIKI_CONCEPTS_DIR.mkdir(parents=True, exist_ok=True)
+    WIKI_SOURCES_DIR.mkdir(parents=True, exist_ok=True)
+    WIKI_SYNTHESES_DIR.mkdir(parents=True, exist_ok=True)
 
     # Initialize index.md if it doesn't exist
     if not INDEX_FILE.exists():

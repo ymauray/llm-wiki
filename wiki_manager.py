@@ -20,6 +20,10 @@ from typing import Dict, List, Set, Tuple
 from config import (
     SOURCES_DIR,
     WIKI_DIR,
+    WIKI_ENTITIES_DIR,
+    WIKI_CONCEPTS_DIR,
+    WIKI_SOURCES_DIR,
+    WIKI_SYNTHESES_DIR,
     INDEX_FILE,
     LOG_FILE,
     MANIFEST_FILE,
@@ -31,6 +35,53 @@ from llm_client import call_llm
 def get_timestamp() -> str:
     """Returns current date and time formatted as YYYY-MM-DD HH:MM."""
     return datetime.now().strftime("%Y-%m-%d %H:%M")
+
+
+def get_target_wiki_path(filename: str) -> Path:
+    """
+    Returns the appropriate destination Path in wiki subdirectories (entities, concepts, sources, syntheses)
+    based on the filename or prefix.
+    """
+    clean_name = filename.strip()
+    basename = Path(clean_name).name
+
+    if clean_name.startswith("entities/") or basename.startswith("Entite_") or basename.startswith("Entity_"):
+        return WIKI_ENTITIES_DIR / basename
+    elif clean_name.startswith("concepts/") or basename.startswith("Concept_"):
+        return WIKI_CONCEPTS_DIR / basename
+    elif clean_name.startswith("sources/") or basename.startswith("Source_"):
+        return WIKI_SOURCES_DIR / basename
+    elif clean_name.startswith("syntheses/") or basename.startswith("Synthesis_"):
+        return WIKI_SYNTHESES_DIR / basename
+    else:
+        # Fallback heuristic based on name
+        lower_name = basename.lower()
+        if "concept" in lower_name:
+            return WIKI_CONCEPTS_DIR / basename
+        elif "entite" in lower_name or "entity" in lower_name:
+            return WIKI_ENTITIES_DIR / basename
+        elif "source" in lower_name:
+            return WIKI_SOURCES_DIR / basename
+        elif "synthes" in lower_name:
+            return WIKI_SYNTHESES_DIR / basename
+        return WIKI_SYNTHESES_DIR / basename
+
+
+def migrate_existing_wiki_files() -> None:
+    """
+    Moves any legacy markdown files in /wiki root into their respective
+    subdirectories (entities, concepts, sources, syntheses).
+    """
+    init_environment()
+    if not WIKI_DIR.exists():
+        return
+    for filepath in WIKI_DIR.glob("*.md"):
+        if filepath.name in ["index.md", "log.md"]:
+            continue
+        target_path = get_target_wiki_path(filepath.name)
+        if filepath.resolve() != target_path.resolve():
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            filepath.rename(target_path)
 
 
 def append_to_log(operation: str, title: str, details: str = "") -> None:
@@ -77,19 +128,24 @@ def calculate_file_hash(filepath: Path) -> str:
 
 
 def get_all_wiki_pages() -> Dict[str, str]:
-    """Returns a map of {filename: file_content} for all markdown files in /wiki except index/log."""
+    """
+    Returns a map of {relative_posix_path: file_content} for all markdown files
+    in /wiki and its subdirectories except index.md and log.md.
+    """
     init_environment()
+    migrate_existing_wiki_files()
     pages = {}
-    for filepath in WIKI_DIR.glob("*.md"):
+    for filepath in WIKI_DIR.rglob("*.md"):
         if filepath.name in ["index.md", "log.md"]:
             continue
-        pages[filepath.name] = filepath.read_text(encoding="utf-8")
+        rel_path = filepath.relative_to(WIKI_DIR).as_posix()
+        pages[rel_path] = filepath.read_text(encoding="utf-8")
     return pages
 
 
 def update_index_md() -> None:
     """
-    Scans all wiki pages in /wiki/ and re-builds wiki/index.md,
+    Scans all wiki pages across /wiki subdirectories and re-builds wiki/index.md,
     categorizing pages into Entities, Concepts, Syntheses, and Source Summaries.
     """
     pages = get_all_wiki_pages()
@@ -99,10 +155,11 @@ def update_index_md() -> None:
     syntheses = []
     sources = []
 
-    for filename, content in sorted(pages.items()):
+    for rel_path, content in sorted(pages.items()):
         # Extract title from first # header or fallback to filename stem
         match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
-        title = match.group(1).strip() if match else filename.replace(".md", "").replace("_", " ")
+        basename = Path(rel_path).stem
+        title = match.group(1).strip() if match else basename.replace("_", " ")
 
         # Extract one-line summary (first non-header non-empty line or > blockquote)
         summary = ""
@@ -114,14 +171,14 @@ def update_index_md() -> None:
                     summary = summary[:117] + "..."
                 break
 
-        link_entry = f"- [{title}]({filename}) - {summary}" if summary else f"- [{title}]({filename})"
+        link_entry = f"- [{title}]({rel_path}) - {summary}" if summary else f"- [{title}]({rel_path})"
 
-        # Categorize by prefix or tags
-        if filename.startswith("Source_") or "Type: Source Summary" in content:
+        # Categorize by subdirectory prefix or tags
+        if rel_path.startswith("sources/") or basename.startswith("Source_") or "Type: Source Summary" in content:
             sources.append(link_entry)
-        elif filename.startswith("Entity_") or "Type: Entity" in content:
+        elif rel_path.startswith("entities/") or basename.startswith("Entite_") or basename.startswith("Entity_") or "Type: Entity" in content:
             entities.append(link_entry)
-        elif filename.startswith("Concept_") or "Type: Concept" in content:
+        elif rel_path.startswith("concepts/") or basename.startswith("Concept_") or "Type: Concept" in content:
             concepts.append(link_entry)
         else:
             syntheses.append(link_entry)
@@ -230,16 +287,16 @@ def ingest_new_sources() -> List[str]:
         
         existing_index = INDEX_FILE.read_text(encoding="utf-8") if INDEX_FILE.exists() else ""
 
-        # System prompt for source ingestion in French
+        # System prompt for source ingestion in French with subdirectories
         system_prompt = (
             "Tu es un gestionnaire expert de LLM Wiki. Ta mission est d'analyser un document source brut "
-            "et de mettre à jour le Wiki Markdown persistent.\n"
+            "et de mettre à jour le Wiki Markdown persistent structuré en sous-dossiers (entities/, concepts/, sources/).\n"
             "CONSIGNE DE LANGUE IMPÉRATIVE :\n"
             "Tu dois rédiger TOUS les contenus, titres, résumés, concepts et entités STRICTEMENT EN FRANÇAIS.\n\n"
             "Directives :\n"
             "1. Extrais les faits clés, entités, concepts et éléments de synthèse.\n"
             "2. Génère un contenu Markdown propre et clair.\n"
-            "3. Interconnecte les pages du wiki en utilisant des liens Markdown standard : [Titre de la Page](NomFichier.md).\n"
+            "3. Interconnecte les pages du wiki en utilisant des liens Markdown : [Titre](entities/Entite_Nom.md) ou [Titre](concepts/Concept_Nom.md).\n"
             "4. Retourne UNIQUEMENT un objet JSON valide structuré comme suit :\n"
             "{\n"
             '  "source_summary_filename": "Source_<Nom>.md",\n'
@@ -281,39 +338,43 @@ def ingest_new_sources() -> List[str]:
                 "wiki_updates": []
             }
 
-        # Write Source Summary page
+        # Write Source Summary page into wiki/sources/
         summary_filename = data.get("source_summary_filename", f"Source_{source_path.stem}.md")
-        summary_path = WIKI_DIR / summary_filename
+        summary_path = get_target_wiki_path(summary_filename)
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
         summary_path.write_text(data.get("source_summary_content", ""), encoding="utf-8")
-        print(f"   ✓ Created/Updated: {summary_filename}")
+        summary_rel = summary_path.relative_to(WIKI_DIR).as_posix()
+        print(f"   ✓ Created/Updated: {summary_rel}")
 
-        # Write/Update Entity and Concept pages
+        # Write/Update Entity and Concept pages in their respective subdirectories
         for update in data.get("wiki_updates", []):
             page_filename = update.get("filename")
             page_content = update.get("content")
             if page_filename and page_content:
-                page_path = WIKI_DIR / page_filename
+                page_path = get_target_wiki_path(page_filename)
+                page_path.parent.mkdir(parents=True, exist_ok=True)
+                page_rel = page_path.relative_to(WIKI_DIR).as_posix()
                 
                 # Merge if file already exists
                 if page_path.exists():
                     existing_text = page_path.read_text(encoding="utf-8")
                     merged_content = existing_text + f"\n\n---\n### Update from {filename} ({get_timestamp()})\n\n" + page_content
                     page_path.write_text(merged_content, encoding="utf-8")
-                    print(f"   ✓ Updated existing page: {page_filename}")
+                    print(f"   ✓ Updated existing page: {page_rel}")
                 else:
                     page_path.write_text(page_content, encoding="utf-8")
-                    print(f"   ✓ Created page: {page_filename}")
+                    print(f"   ✓ Created page: {page_rel}")
 
         # Update manifest
         manifest[filename] = {
             "hash": file_hash,
             "ingested_at": get_timestamp(),
-            "summary_page": summary_filename,
+            "summary_page": summary_rel,
         }
         save_manifest(manifest)
 
         # Append to log.md (Karpathy spec)
-        append_to_log("ingest", filename, f"Created summary {summary_filename} and integrated concepts into wiki.")
+        append_to_log("ingest", filename, f"Created summary {summary_rel} and integrated concepts into wiki subdirectories.")
         ingested_titles.append(filename)
 
     # Re-build index.md
@@ -339,9 +400,9 @@ def query_wiki(query_text: str) -> Tuple[str, List[str]]:
 
     # Step 1: Let LLM pick the most relevant wiki pages based on index
     selection_prompt = (
-        "Given the user query and the Wiki Index below, list the filenames of up to 5 relevant wiki pages "
+        "Given the user query and the Wiki Index below, list the relative filenames of up to 5 relevant wiki pages "
         "needed to answer the query.\n"
-        "Return ONLY a JSON array of string filenames, e.g. [\"Concept_X.md\", \"Source_Y.md\"]."
+        "Return ONLY a JSON array of string relative filenames, e.g. [\"concepts/Concept_X.md\", \"sources/Source_Y.md\"]."
     )
     selection_messages = [
         {"role": "system", "content": selection_prompt},
@@ -359,23 +420,36 @@ def query_wiki(query_text: str) -> Tuple[str, List[str]]:
     except Exception:
         relevant_files = list(pages.keys())[:5]
 
-    # Retrieve context from chosen files
+    # Retrieve context from chosen files (handling both relative path and basename lookup)
     context_blocks = []
+    normalized_relevant = []
     for fn in relevant_files:
+        matched_key = None
         if fn in pages:
-            context_blocks.append(f"--- FILE: {fn} ---\n{pages[fn]}")
+            matched_key = fn
+        else:
+            base = Path(fn).name
+            for p_key in pages:
+                if Path(p_key).name == base:
+                    matched_key = p_key
+                    break
+        
+        if matched_key:
+            context_blocks.append(f"--- FILE: {matched_key} ---\n{pages[matched_key]}")
+            normalized_relevant.append(matched_key)
 
     if not context_blocks:
-        # Fallback to all pages if selection failed
+        # Fallback to first 5 pages if selection failed
         for fn, content in list(pages.items())[:5]:
             context_blocks.append(f"--- FILE: {fn} ---\n{content}")
+            normalized_relevant.append(fn)
 
     context_str = "\n\n".join(context_blocks)
 
     # Step 2: Synthesize answer in French with citations
     synth_prompt = (
         "Tu es l'Assistant LLM Wiki. Réponds à la question de l'utilisateur STRICTEMENT EN FRANÇAIS en t'appuyant uniquement sur les pages du Wiki fournies.\n"
-        "Cite les pages du wiki pertinentes avec des liens Markdown standard : [Titre de la Page](NomFichier.md).\n"
+        "Cite les pages du wiki pertinentes avec des liens Markdown standard : [Titre de la Page](subfolder/NomFichier.md).\n"
         "Si des informations manquent, précise clairement ce qui est connu et les lacunes d'information identifiées."
     )
     synth_messages = [
@@ -386,19 +460,20 @@ def query_wiki(query_text: str) -> Tuple[str, List[str]]:
     answer = call_llm(synth_messages, temperature=0.3)
 
     # Log query operation
-    append_to_log("query", query_text, f"Synthesized answer using {len(relevant_files)} page(s).")
+    append_to_log("query", query_text, f"Synthesized answer using {len(normalized_relevant)} page(s).")
     
-    return answer, relevant_files
+    return answer, normalized_relevant
 
 
 def save_synthesis_to_wiki(title: str, content: str) -> str:
     """
-    Saves a synthesized query response back into the Wiki as a persistent Synthesis page.
+    Saves a synthesized query response back into the Wiki as a persistent Synthesis page in /wiki/syntheses/.
     Compounding knowledge as described by Karpathy.
     """
     safe_title = re.sub(r"[^\w\-]", "_", title.strip())
     filename = f"Synthesis_{safe_title}.md"
-    file_path = WIKI_DIR / filename
+    file_path = WIKI_SYNTHESES_DIR / filename
+    file_path.parent.mkdir(parents=True, exist_ok=True)
 
     formatted_content = f"# Synthesis: {title}\n\n"
     formatted_content += f"*Generated: {get_timestamp()}*\n\n"
@@ -407,14 +482,15 @@ def save_synthesis_to_wiki(title: str, content: str) -> str:
     file_path.write_text(formatted_content, encoding="utf-8")
     
     update_index_md()
-    append_to_log("synthesis", title, f"Filed query answer back into wiki as {filename}.")
-    return filename
+    rel_path = f"syntheses/{filename}"
+    append_to_log("synthesis", title, f"Filed query answer back into wiki as {rel_path}.")
+    return rel_path
 
 
 def lint_wiki() -> str:
     """
     Performs a health check on the Wiki:
-    - Identifies broken links
+    - Identifies broken links across subdirectories
     - Identifies orphan pages
     - Asks LLM to find contradictions, stale claims, and content gaps
     """
@@ -424,24 +500,34 @@ def lint_wiki() -> str:
     if not pages:
         return "The Wiki is empty. Nothing to lint."
 
-    existing_filenames = set(pages.keys())
-    existing_filenames.add("index.md")
-    existing_filenames.add("log.md")
+    existing_rel_paths = set(pages.keys())
+    existing_basenames = {Path(p).name: p for p in pages.keys()}
+    existing_rel_paths.add("index.md")
+    existing_rel_paths.add("log.md")
 
     broken_links = []
     incoming_links: Dict[str, Set[str]] = {fn: set() for fn in pages.keys()}
 
-    # Scan for markdown links: [Text](Target.md)
+    # Scan for markdown links: [Text](Target.md) or [Text](folder/Target.md)
     link_pattern = re.compile(r"\[([^\]]+)\]\(([^)]+\.md)\)")
 
     for src_file, content in pages.items():
         for match in link_pattern.finditer(content):
-            link_target = match.group(2)
-            if link_target not in existing_filenames:
-                broken_links.append((src_file, link_target))
-            else:
-                if link_target in incoming_links:
-                    incoming_links[link_target].add(src_file)
+            raw_target = match.group(2).strip()
+            # Normalize target relative path
+            target_norm = raw_target.lstrip("./").replace("\\", "/")
+            target_base = Path(target_norm).name
+
+            target_match = None
+            if target_norm in existing_rel_paths:
+                target_match = target_norm
+            elif target_base in existing_basenames:
+                target_match = existing_basenames[target_base]
+
+            if not target_match and target_base not in ["index.md", "log.md"]:
+                broken_links.append((src_file, raw_target))
+            elif target_match and target_match in incoming_links:
+                incoming_links[target_match].add(src_file)
 
     # Check for orphan pages (pages not linked by any other page)
     orphan_pages = [fn for fn, links in incoming_links.items() if len(links) == 0]
@@ -520,19 +606,25 @@ def get_wiki_status() -> Dict[str, object]:
 def reset_wiki(keep_sources: bool = True) -> None:
     """
     Resets the Wiki to a clean state.
-    Deletes all wiki pages, manifest, log.md, and index.md.
+    Deletes all wiki pages across subdirectories, manifest, log.md, and index.md.
     If keep_sources is False, also clears the /sources directory.
     """
+    import shutil
     if WIKI_DIR.exists():
-        for file in WIKI_DIR.glob("*"):
-            if file.is_file():
-                file.unlink()
+        for item in WIKI_DIR.iterdir():
+            if item.name.startswith("."):
+                continue
+            if item.is_file():
+                item.unlink()
+            elif item.is_dir():
+                shutil.rmtree(item)
 
     if not keep_sources and SOURCES_DIR.exists():
         for file in SOURCES_DIR.glob("*"):
             if file.is_file() and not file.name.startswith("."):
                 file.unlink()
 
-    # Re-initialize clean index.md, log.md and directories
+    # Re-initialize clean index.md, log.md and subdirectories
     init_environment()
+
 
